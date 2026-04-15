@@ -85,6 +85,7 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
 <div class="tabs">
   <div class="tab active" onclick="switchTab('trades')">Trades</div>
   <div class="tab" onclick="switchTab('estrategias')">Estrategias</div>
+  <div class="tab" onclick="switchTab('conceptos')">Conceptos</div>
 </div>
 
 <div class="tab-content active" id="tab-trades">
@@ -216,6 +217,127 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
 </div>
 
 </div><!-- end tab-estrategias -->
+
+<div class="tab-content" id="tab-conceptos">
+
+<div class="strat-card">
+  <h3>Que es un futuro de dolar</h3>
+  <p>Un contrato de futuro DLR en MATBA-ROFEX es un acuerdo para comprar o vender <b>USD 1.000</b> a un precio fijo en una fecha futura. No necesitas tener los dolares: solo dejas una garantia (margen) y operas la diferencia de precio.</p>
+  <p>Ejemplo: si compras 1 contrato DLR/JUL26 a $1.456 y el precio sube a $1.500, ganas (1.500 - 1.456) x 1.000 = <b>$44.000 ARS</b>. Si baja a $1.420, perdes (1.456 - 1.420) x 1.000 = <b>-$36.000 ARS</b>.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Posicion SHORT vs LONG</h3>
+  <h4>LONG (compra)</h4>
+  <p>Compras el futuro esperando que el precio <b>suba</b>. Ganas si el dolar futuro sube, perdes si baja. Es apostar a devaluacion.</p>
+  <h4>SHORT (venta)</h4>
+  <p>Vendes el futuro esperando que el precio <b>baje</b>. Ganas si el dolar futuro baja, perdes si sube. Es apostar a que el mercado exagero y el precio va a corregir. <b>Este bot opera principalmente SHORT</b> porque en el backtest demostro que las ventas en picos de tasa implicita tienen el mejor rendimiento.</p>
+  <p>Para abrir un SHORT en Cocos, busca el contrato DLR (ej: DLR/JUL26) y coloca una orden de <b>venta</b>.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Margen y garantias</h3>
+  <p>Para abrir una posicion en futuros no necesitas el valor total del contrato. Solo dejas un <b>margen</b> (garantia) que es aproximadamente el 3-5% del valor nocional.</p>
+  <p>Ejemplo: DLR/JUL26 a $1.456 → valor nocional = $1.456.000 ARS. Margen estimado: <b>~$43.000 - $73.000 ARS</b>.</p>
+  <p>Con $400.000 podes operar comodamente 1-2 contratos dejando capital libre como colchon.</p>
+  <h4>Margin call</h4>
+  <p>Si el mercado va en contra de tu posicion y tu cuenta cae debajo del margen minimo, el broker te pide depositar mas plata (<b>margin call</b>). Si no depositas, te cierran la posicion. Por eso es clave respetar el stop loss y no apalancarse de mas.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Mark-to-market</h3>
+  <p>Todos los dias a las 17:00 (cierre de mercado), MATBA-ROFEX calcula las ganancias y perdidas de tu posicion contra el <b>precio de ajuste (settlement)</b>. Si ganaste, te acreditan la diferencia. Si perdiste, te debitan.</p>
+  <p>Esto significa que las ganancias/perdidas se realizan todos los dias, no solo cuando cerras la posicion. Tu cuenta sube y baja diariamente.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Tasa implicita</h3>
+  <p>Es <b>la variable mas importante</b> de este bot. Mide cuanto "rinde" el futuro respecto al dolar spot, anualizado.</p>
+  <p><code>Tasa = ((Precio_Futuro / Spot) - 1) * (365 / dias_vto) * 100</code></p>
+  <p>Si el spot esta a $1.358 y DLR/JUL26 a $1.456 (faltan 77 dias):</p>
+  <p><code>Tasa = ((1456 / 1358) - 1) * (365 / 77) * 100 = 34.2% TNA</code></p>
+  <p>Esta tasa refleja la <b>expectativa del mercado sobre la devaluacion futura</b>. Cuando sube bruscamente, el mercado esta nervioso y es oportunidad de venta (mean reversion).</p>
+</div>
+
+<div class="strat-card">
+  <h3>Open Interest (OI)</h3>
+  <p>Es la cantidad total de contratos abiertos en un vencimiento. Cada contrato tiene un comprador y un vendedor.</p>
+  <h4>OI sube</h4>
+  <p>Entran posiciones nuevas al mercado. Hay interes genuino. Si el precio sube y el OI sube → movimiento con fuerza.</p>
+  <h4>OI baja</h4>
+  <p>Se cierran posiciones existentes. Los participantes se estan yendo. Si el precio sube pero el OI baja → movimiento debil, probable reversion.</p>
+  <h4>OI change</h4>
+  <p>Es el cambio diario del OI. Un OI change de +50.000 significa que se abrieron 50.000 contratos nuevos ese dia. El bot usa el OI como <b>confirmacion</b> de las senales.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Stop Loss y Take Profit</h3>
+  <h4>Stop Loss (SL)</h4>
+  <p>Es el precio al que cerras la posicion si el mercado va en tu contra. Limita tu perdida maxima. <b>Es obligatorio en cada trade.</b> En este bot, el SL es 2% del precio de entrada.</p>
+  <h4>Take Profit (TP)</h4>
+  <p>Es el precio al que cerras la posicion cuando ganas. En este bot, el TP es 4% del precio de entrada.</p>
+  <h4>Ratio Riesgo/Beneficio</h4>
+  <p>Con SL de 2% y TP de 4%, el ratio es <b>1:2</b>. Esto significa que cada ganancia compensa 2 perdidas. Con un win rate del 50%, ya salis ganando. Con el 85% que mostro el backtest, la ventaja es enorme.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Vencimientos y rollover</h3>
+  <p>Cada contrato DLR tiene un mes de vencimiento (ej: DLR/JUN26 vence a fin de junio 2026). A medida que se acerca el vencimiento:</p>
+  <p>• La <b>tasa implicita converge a cero</b> (el futuro se acerca al spot)</p>
+  <p>• El <b>volumen migra al siguiente vencimiento</b></p>
+  <p>• La <b>liquidez baja</b> en los ultimos dias</p>
+  <h4>Rollover</h4>
+  <p>Si tenes una posicion abierta y se acerca el vencimiento, debes cerrarla y abrir en el siguiente mes. Esto se llama <b>rollover</b>. El bot no opera contratos con menos de 5 dias al vencimiento para evitar este problema.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Brecha cambiaria</h3>
+  <p>Es la diferencia entre el dolar oficial y los demas tipos de dolar:</p>
+  <p>• <b>Dolar blue:</b> informal, se opera en cuevas</p>
+  <p>• <b>Dolar MEP:</b> se obtiene comprando bonos en pesos y vendiendolos en dolares</p>
+  <p>• <b>Dolar CCL:</b> contado con liquidacion, similar al MEP pero en el exterior</p>
+  <p>Cuando la brecha es alta (>30-40%), hay presion devaluatoria. El mercado de futuros reacciona subiendo las tasas implicitas. Una brecha baja (como ahora, ~1-6%) indica estabilidad cambiaria.</p>
+</div>
+
+<div class="strat-card">
+  <h3>BADLAR</h3>
+  <p>Es la tasa de interes que pagan los bancos privados por depositos a plazo fijo de mas de $1 millon a 30 dias. Es la <b>tasa de referencia</b> del mercado argentino.</p>
+  <p>El bot compara la tasa implicita de los futuros contra la BADLAR. Si la tasa del futuro es mucho mas alta que la BADLAR, el mercado esta pagando una prima excesiva por cubrirse contra devaluacion → oportunidad de venta.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Horario de mercado</h3>
+  <p>MATBA-ROFEX opera de <b>lunes a viernes de 10:00 a 17:00</b> (hora Argentina, UTC-3). El bot escanea cada 5 minutos durante este horario.</p>
+  <p>• <b>10:00:</b> apertura + resumen de mercado</p>
+  <p>• <b>10:00-17:00:</b> escaneo cada 5 minutos, alertas instantaneas</p>
+  <p>• <b>17:00:</b> settlement (precio de ajuste) y mark-to-market</p>
+  <p>• <b>17:15:</b> resumen de cierre</p>
+  <p>• <b>Viernes 17:30:</b> reporte semanal de performance</p>
+</div>
+
+<div class="strat-card">
+  <h3>Reglas de operacion del bot</h3>
+  <p>• <b>Max 2 contratos</b> por trade (perfil conservador)</p>
+  <p>• <b>Stop loss obligatorio</b> en cada entrada</p>
+  <p>• <b>Ratio R/B minimo 1:2</b> (arriesgo 1 para ganar 2)</p>
+  <p>• <b>No operar cerca de vencimiento</b> (min 5 dias)</p>
+  <p>• <b>No repetir senales</b> el mismo dia (sin spam)</p>
+  <p>• <b>Max 20 dias en posicion</b> (si no toco TP ni SL, se cierra)</p>
+  <p>• <b>El bot se auto-calibra:</b> si una estrategia rinde mal, sube el umbral (menos senales, mas calidad). Si rinde bien, mantiene.</p>
+</div>
+
+<div class="strat-card">
+  <h3>Como operar cuando llega una alerta</h3>
+  <p><b>1.</b> Recibes la alerta en Telegram con ticker, precio de entrada, SL y TP</p>
+  <p><b>2.</b> Abri Cocos y busca el contrato (ej: DLR/JUL26)</p>
+  <p><b>3.</b> Si la alerta dice VENTA, coloca una orden de <b>venta</b> al precio indicado o a mercado</p>
+  <p><b>4.</b> Inmediatamente coloca una orden de <b>compra</b> (para cerrar) al precio del Stop Loss como orden condicionada</p>
+  <p><b>5.</b> Coloca otra orden de <b>compra</b> al precio del Take Profit</p>
+  <p><b>6.</b> Espera. El bot te va a avisar cuando el trade se cierre (TP, SL o timeout)</p>
+  <p><b>7.</b> Actualiza el estado en el journal (nicozerep.github.io/rofex-journal)</p>
+</div>
+
+</div><!-- end tab-conceptos -->
 
 <script>
 function switchTab(tab) {
