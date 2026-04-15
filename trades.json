@@ -29,5 +29,31 @@
     "precio_real_salida": null,
     "pnl_real": null,
     "notas": ""
+  },
+  {
+    "id": 2,
+    "fecha": "2026-04-15 19:30",
+    "ticker": "DLR/MAY26",
+    "tipo": "VENTA",
+    "estrategia": "oi-momentum",
+    "fuerza": "MODERADA",
+    "entrada": 1399.0,
+    "stop_loss": 1426.98,
+    "take_profit": 1357.03,
+    "tasa_implicita": 24.2,
+    "motivo": "OI sube +7.2% | 2,338,250 -> 2,506,470 contratos",
+    "contratos": 1,
+    "pnl_tp": 41970,
+    "pnl_sl": 27980,
+    "datos_extra": {
+      "oi_change_pct": 7.2,
+      "oi": 2506470,
+      "volumen": 259355
+    },
+    "estado": "PENDIENTE",
+    "precio_real_entrada": null,
+    "precio_real_salida": null,
+    "pnl_real": null,
+    "notas": ""
   }
 ]
