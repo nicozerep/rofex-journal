@@ -44,6 +44,8 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
 .filter-btn { padding: 5px 12px; border-radius: 5px; border: 1px solid #2a2d3a; background: #1a1d2e; color: #e0e0e0; cursor: pointer; font-size: 11px; }
 .filter-btn:hover, .filter-btn.active { background: #2a3050; border-color: #7eb8f7; color: #7eb8f7; }
 .motivo { max-width: 220px; font-size: 10px; color: #888; }
+.badge-short { background: #3a1a1a; color: #f44336; }
+.badge-long { background: #1a3a1a; color: #4caf50; }
 .empty { text-align: center; padding: 60px 20px; color: #555; }
 .empty h3 { color: #7eb8f7; margin-bottom: 10px; }
 .bar-chart { display: flex; align-items: flex-end; height: 120px; gap: 2px; margin: 8px 0; }
@@ -61,13 +63,12 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
 <h2>Trades</h2>
 <div class="filter-bar" id="filters"></div>
 <div>
-  <button class="btn btn-secondary" onclick="exportCSV()">Exportar CSV</button>
-  <button class="btn btn-secondary" onclick="saveBackup()">Backup JSON</button>
+  <button class="btn btn-secondary" onclick="exportExcel()">Descargar Excel</button>
 </div>
 <div style="overflow-x:auto;margin-top:8px;">
 <table>
 <thead><tr>
-<th>#</th><th>Fecha</th><th>Ticker</th><th>Estrategia</th><th>Fuerza</th>
+<th>#</th><th>Fecha</th><th>Posicion</th><th>Ticker</th><th>Estrategia</th><th>Fuerza</th>
 <th>Entrada</th><th>SL</th><th>TP</th><th>+TP</th><th>-SL</th>
 <th>Estado</th><th>Entrada Real</th><th>Salida Real</th><th>P&L Real</th><th>Notas</th><th>Motivo</th>
 </tr></thead>
@@ -131,8 +132,12 @@ function render(f) {
     ${st.map(s=>`<button class="filter-btn ${f===s?'active':''}" onclick="render('${s}')">${SN[s]||s} (${TRADES.filter(t=>t.estrategia===s).length})</button>`).join('')}`;
 
   // Table
+  const pos = t => t.tipo === 'VENTA' ? 'SHORT' : 'LONG';
+  const posClass = t => t.tipo === 'VENTA' ? 'badge-short' : 'badge-long';
   document.getElementById('tb').innerHTML = ft.slice().reverse().map(t=>`<tr>
-    <td>${t.id}</td><td style="white-space:nowrap">${t.fecha}</td><td><b>${t.ticker}</b></td>
+    <td>${t.id}</td><td style="white-space:nowrap">${t.fecha}</td>
+    <td><span class="badge ${posClass(t)}">${pos(t)}</span></td>
+    <td><b>${t.ticker}</b></td>
     <td><span class="badge ${SB[t.estrategia]||''}">${SN[t.estrategia]||t.estrategia||''}</span></td>
     <td><span class="badge badge-${t.fuerza.toLowerCase()}">${t.fuerza}</span></td>
     <td>$${t.entrada?.toLocaleString('es-AR')||'-'}</td>
@@ -167,8 +172,37 @@ function render(f) {
 function upd(id,k,v){const t=TRADES.find(x=>x.id===id);if(t){t[k]=v;sav();}}
 function calc(id){const t=TRADES.find(x=>x.id===id);if(t&&t.precio_real_entrada&&t.precio_real_salida){t.pnl_real=Math.round((t.tipo==='VENTA'?t.precio_real_entrada-t.precio_real_salida:t.precio_real_salida-t.precio_real_entrada)*1000*(t.contratos||1));sav();render();}}
 function sav(){const e={};TRADES.forEach(t=>{e[t.id]={estado:t.estado,precio_real_entrada:t.precio_real_entrada,precio_real_salida:t.precio_real_salida,pnl_real:t.pnl_real,notas:t.notas};});localStorage.setItem(lk,JSON.stringify(e));}
-function exportCSV(){const h='ID,Fecha,Ticker,Estrategia,Fuerza,Entrada,SL,TP,Estado,Entrada Real,Salida Real,PnL Real,Notas';const r=TRADES.map(t=>[t.id,t.fecha,t.ticker,t.estrategia,t.fuerza,t.entrada,t.stop_loss,t.take_profit,t.estado,t.precio_real_entrada||'',t.precio_real_salida||'',t.pnl_real||'','"'+(t.notas||'')+'"'].join(','));const c=[h,...r].join('\n');const b=new Blob([c],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rofex_'+new Date().toISOString().split('T')[0]+'.csv';a.click();}
-function saveBackup(){const b=new Blob([JSON.stringify(TRADES,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='trades_backup.json';a.click();}
+function exportExcel(){
+  // Generate real .xlsx using XML spreadsheet format (opens natively in Excel)
+  const ws = TRADES.map(t=>[
+    t.id, t.fecha, t.tipo==='VENTA'?'SHORT':'LONG', t.ticker, t.estrategia, t.fuerza,
+    t.entrada, t.stop_loss, t.take_profit, t.pnl_tp, t.pnl_sl,
+    t.estado, t.precio_real_entrada||'', t.precio_real_salida||'', t.pnl_real||'', t.notas||'', t.motivo
+  ]);
+  const hd=['#','Fecha','Posicion','Ticker','Estrategia','Fuerza','Entrada','SL','TP','+TP','-SL','Estado','Entrada Real','Salida Real','P&L Real','Notas','Motivo'];
+  let xml='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
+  xml+='<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+  xml+='<Styles><Style ss:ID="hd"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e2233" ss:Pattern="Solid"/></Style>';
+  xml+='<Style ss:ID="pos"><Font ss:Color="#4caf50" ss:Bold="1"/></Style>';
+  xml+='<Style ss:ID="neg"><Font ss:Color="#f44336" ss:Bold="1"/></Style></Styles>';
+  xml+='<Worksheet ss:Name="Trades"><Table>';
+  xml+='<Row>'+hd.map(h=>`<Cell ss:StyleID="hd"><Data ss:Type="String">${h}</Data></Cell>`).join('')+'</Row>';
+  ws.forEach(r=>{
+    xml+='<Row>'+r.map((c,i)=>{
+      const tipo = typeof c==='number'?'Number':'String';
+      let style = '';
+      if(i===14 && c>0) style=' ss:StyleID="pos"';
+      if(i===14 && c<0) style=' ss:StyleID="neg"';
+      return `<Cell${style}><Data ss:Type="${tipo}">${c}</Data></Cell>`;
+    }).join('')+'</Row>';
+  });
+  xml+='</Table></Worksheet></Workbook>';
+  const b=new Blob([xml],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download='rofex_trades_'+new Date().toISOString().split('T')[0]+'.xls';
+  a.click();
+}
 
 render();
 </script>
