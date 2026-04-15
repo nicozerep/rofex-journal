@@ -156,7 +156,7 @@ function render(f) {
     <td><span class="badge ${posClass(t)}">${pos(t)}</span></td>
     <td><b>${t.ticker}</b></td>
     <td><span class="badge ${SB[t.estrategia]||''}">${SN[t.estrategia]||t.estrategia||''}</span></td>
-    <td>$${t.entrada?.toLocaleString('es-AR')||'-'}</td>
+    <td class="bold">$${t.entrada?.toLocaleString('es-AR')||'-'}</td>
     <td class="bold">$${t.stop_loss?.toLocaleString('es-AR')||'-'}</td>
     <td class="bold">$${t.take_profit?.toLocaleString('es-AR')||'-'}</td>
     <td class="green">+$${(t.pnl_tp||0).toLocaleString('es-AR')}</td>
