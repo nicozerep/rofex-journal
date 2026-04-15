@@ -17,7 +17,8 @@ h2 { color: #7eb8f7; margin: 22px 0 10px; border-bottom: 1px solid #2a2d3a; padd
 .green { color: #4caf50; } .red { color: #f44336; } .blue { color: #7eb8f7; } .gold { color: #ffd700; } .orange { color: #ff9800; }
 table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
 th { background: #1e2233; color: #7eb8f7; text-align: center; padding: 8px; position: sticky; top: 0; font-size: 11px; }
-td { padding: 6px 8px; border-bottom: 1px solid #1e2233; text-align: center; font-weight: bold; }
+td { padding: 6px 8px; border-bottom: 1px solid #1e2233; text-align: center; }
+td.bold { font-weight: bold; }
 tr:hover { background: #1a1d2e; }
 .badge { padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; }
 .badge-zscore { background: #1a3a2a; color: #4caf50; }
@@ -157,8 +158,8 @@ function render(f) {
     <td><span class="badge ${SB[t.estrategia]||''}">${SN[t.estrategia]||t.estrategia||''}</span></td>
     <td><span class="badge badge-${t.fuerza.toLowerCase()}">${t.fuerza}</span></td>
     <td>$${t.entrada?.toLocaleString('es-AR')||'-'}</td>
-    <td>$${t.stop_loss?.toLocaleString('es-AR')||'-'}</td>
-    <td>$${t.take_profit?.toLocaleString('es-AR')||'-'}</td>
+    <td class="bold">$${t.stop_loss?.toLocaleString('es-AR')||'-'}</td>
+    <td class="bold">$${t.take_profit?.toLocaleString('es-AR')||'-'}</td>
     <td class="green">+$${(t.pnl_tp||0).toLocaleString('es-AR')}</td>
     <td class="red">-$${(t.pnl_sl||0).toLocaleString('es-AR')}</td>
     <td><select class="estado estado-${t.estado}" onchange="upd(${t.id},'estado',this.value);this.className='estado estado-'+this.value">
