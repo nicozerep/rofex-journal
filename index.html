@@ -368,7 +368,7 @@ function switchTab(tab) {
 
 <script>
 // === TRADES DATA (auto-updated by bot) ===
-let TRADES = [{"id": 1, "fecha": "2026-04-15 19:38", "ticker": "DLR/JUN26", "tipo": "VENTA", "estrategia": "gap", "fuerza": "MODERADA", "entrada": 1429.0, "stop_loss": 1457.58, "take_profit": 1386.13, "tasa_implicita": 25.1, "motivo": "Gap diario +0.8% | $1,418 -> $1,429 | Volumen 95,339", "contratos": 1, "pnl_tp": 42870, "pnl_sl": 28580, "datos_extra": {"gap_pct": 0.78, "prev_price": 1418.0, "volumen": 95339}, "estado": "PENDIENTE", "precio_real_entrada": null, "precio_real_salida": null, "pnl_real": null, "notas": ""}];
+let TRADES = [];
 // === END TRADES DATA ===
 
 const SN = {'z-score':'Z-Score','calendar-spread':'Calendar','oi-divergence':'OI Div','vol-spike':'Vol Spike','macro-brecha':'Brecha','macro-reservas':'Reservas'};
@@ -377,6 +377,7 @@ const SB = {'z-score':'badge-zscore','calendar-spread':'badge-calendar','oi-dive
 // Load edits from localStorage
 const lk = 'rofex_journal_v2';
 try { const e=JSON.parse(localStorage.getItem(lk)||'{}'); TRADES.forEach(t=>{if(e[t.id])Object.assign(t,e[t.id]);}); } catch(x){}
+const _del=JSON.parse(localStorage.getItem('rofex_deleted')||'[]');TRADES=TRADES.filter(t=>!_del.includes(t.id));
 
 function render(f) {
   document.getElementById('upd').textContent = new Date().toLocaleString('es-AR');
@@ -458,7 +459,7 @@ function render(f) {
 
 function showMotivo(title,text){document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').textContent=text;document.getElementById('modal').classList.add('show');}
 function closeModal(){document.getElementById('modal').classList.remove('show');}
-function deleteTrade(id){if(confirm('Borrar trade #'+id+'?')){TRADES=TRADES.filter(t=>t.id!==id);sav();render();}}
+function deleteTrade(id){if(confirm('Borrar trade #'+id+'?')){let del=JSON.parse(localStorage.getItem('rofex_deleted')||'[]');del.push(id);localStorage.setItem('rofex_deleted',JSON.stringify(del));TRADES=TRADES.filter(t=>t.id!==id);sav();render();}}
 function upd(id,k,v){const t=TRADES.find(x=>x.id===id);if(t){t[k]=v;sav();}}
 function calc(id){const t=TRADES.find(x=>x.id===id);if(t&&t.precio_real_entrada&&t.precio_real_salida){t.pnl_real=Math.round((t.tipo==='VENTA'?t.precio_real_entrada-t.precio_real_salida:t.precio_real_salida-t.precio_real_entrada)*1000*(t.contratos||1));sav();render();}}
 function sav(){const e={};TRADES.forEach(t=>{e[t.id]={estado:t.estado,precio_real_entrada:t.precio_real_entrada,precio_real_salida:t.precio_real_salida,pnl_real:t.pnl_real,notas:t.notas};});localStorage.setItem(lk,JSON.stringify(e));}
