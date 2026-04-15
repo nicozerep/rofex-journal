@@ -337,6 +337,25 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
   <p><b>7.</b> Actualiza el estado en el journal (nicozerep.github.io/rofex-journal)</p>
 </div>
 
+<div class="strat-card">
+  <h3>Como cerrar una posicion</h3>
+  <p>Cerrar una posicion es hacer la <b>operacion contraria</b>:</p>
+  <p>• Si abriste un <b>SHORT</b> (vendiste) → cerras <b>comprando</b> el mismo contrato</p>
+  <p>• Si abriste un <b>LONG</b> (compraste) → cerras <b>vendiendo</b> el mismo contrato</p>
+
+  <h4>Ejemplo con alerta del bot</h4>
+  <p>Llega alerta: <b>VENTA DLR/JUL26 a $1.456, SL $1.485, TP $1.398</b></p>
+  <p><b>1. Abrir la posicion (SHORT):</b> en Cocos, vendes 1 contrato DLR/JUL26 a $1.456</p>
+  <p><b>2. Cerrar si toca TP (ganas):</b> compras 1 contrato DLR/JUL26 a $1.398 → ganancia: ($1.456 - $1.398) x 1.000 = <b>+$58.000 ARS</b></p>
+  <p><b>3. Cerrar si toca SL (perdes):</b> compras 1 contrato DLR/JUL26 a $1.485 → perdida: ($1.456 - $1.485) x 1.000 = <b>-$29.000 ARS</b></p>
+
+  <h4>Ordenes automaticas en Cocos</h4>
+  <p>Cuando abris el SHORT (venta), inmediatamente dejas puestas las dos ordenes de cierre:</p>
+  <p><b>1.</b> Orden de <b>compra a $1.398</b> (TP) — se ejecuta sola si el precio baja</p>
+  <p><b>2.</b> Orden de <b>compra a $1.485</b> (SL) — se ejecuta sola si el precio sube</p>
+  <p>Asi no tenes que estar mirando la pantalla. Cuando alguna se ejecuta, la otra la cancelas. El bot te avisa por Telegram cuando detecte que el trade se cerro.</p>
+</div>
+
 </div><!-- end tab-conceptos -->
 
 <script>
