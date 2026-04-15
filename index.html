@@ -62,11 +62,32 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
 .bar.pos { background: #4caf50; } .bar.neg { background: #f44336; }
 .bar:hover .tip { display: block; }
 .tip { display: none; position: absolute; background: #2a2d3a; color: #fff; padding: 5px 8px; border-radius: 4px; font-size: 10px; z-index: 10; white-space: nowrap; bottom: 100%; left: 50%; transform: translateX(-50%); }
+.tabs { display: flex; gap: 0; margin: 20px 0 0; }
+.tab { padding: 10px 20px; background: #1a1d2e; color: #888; border: 1px solid #2a2d3a; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 13px; font-weight: bold; }
+.tab.active { background: #0f1117; color: #7eb8f7; border-color: #7eb8f7; border-bottom: 1px solid #0f1117; }
+.tab-content { display: none; border: 1px solid #2a2d3a; border-radius: 0 8px 8px 8px; padding: 20px; background: #0f1117; }
+.tab-content.active { display: block; }
+.strat-card { background: #1a1d2e; border: 1px solid #2a2d3a; border-radius: 8px; padding: 18px; margin: 12px 0; }
+.strat-card h3 { color: #7eb8f7; margin-bottom: 8px; font-size: 15px; }
+.strat-card h4 { color: #ffd700; margin: 12px 0 6px; font-size: 13px; }
+.strat-card p { color: #bbb; line-height: 1.7; font-size: 13px; margin: 4px 0; }
+.strat-card code { background: #2a2d3a; color: #4caf50; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+.strat-card .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
+.strat-card .wr { background: #1a3a2a; color: #4caf50; }
+.strat-card .pf { background: #2d2a1f; color: #ffd700; }
+.strat-card .freq { background: #1a2a3a; color: #7eb8f7; }
 </style>
 </head>
 <body>
 <h1>Trade Journal - Bot ROFEX</h1>
 <p class="subtitle">Ultima actualizacion: <span id="upd"></span></p>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('trades')">Trades</div>
+  <div class="tab" onclick="switchTab('estrategias')">Estrategias</div>
+</div>
+
+<div class="tab-content active" id="tab-trades">
 <div class="grid" id="stats"></div>
 <div id="chart-section"></div>
 <h2>Trades</h2>
@@ -94,6 +115,116 @@ textarea.notes { background: #1a1d2e; border: 1px solid #2a2d3a; color: #e0e0e0;
 
 <h2>Performance Real</h2>
 <div class="grid" id="rstats"></div>
+</div><!-- end tab-trades -->
+
+<div class="tab-content" id="tab-estrategias">
+
+<div class="strat-card">
+  <h3>1. Z-Score Tasa Implicita</h3>
+  <span class="tag wr">WR 94.4%</span><span class="tag pf">PF 35.64</span><span class="tag freq">~3.7/mes</span>
+
+  <h4>Que mide</h4>
+  <p>Cada contrato de futuro DLR tiene una <b>tasa implicita</b>: cuanto rinde anualizado respecto al dolar spot. Se calcula como:</p>
+  <p><code>Tasa = ((Precio_Futuro / Spot) - 1) * (365 / dias_vto) * 100</code></p>
+  <p>Ejemplo: si spot = $1.358 y DLR/JUL26 = $1.456, la tasa implicita es ~26% TNA a 77 dias.</p>
+
+  <h4>Como genera senales</h4>
+  <p>El bot guarda la tasa implicita de cada contrato todos los dias y calcula la <b>media movil de 10 dias</b> y el <b>desvio estandar</b>. Cuando la tasa de hoy supera la media por mas de 2 desvios estandar (z-score >= 2.0), genera una senal de <b>VENTA</b>.</p>
+  <p><code>Z-score = (Tasa_hoy - Media_10d) / Desvio_10d</code></p>
+  <p>Si z >= 2.0 → MODERADA | Si z >= 3.0 → FUERTE</p>
+
+  <h4>Por que funciona</h4>
+  <p>Cuando la tasa implicita pega un salto brusco, es porque el mercado entro en panico (por un dato macro, un rumor, incertidumbre). Ese panico es <b>temporal</b> y el precio tiende a corregir a la media en los dias siguientes. Se vende en el pico de la tasa y se cierra cuando baja.</p>
+
+  <h4>Confirmaciones</h4>
+  <p><b>Open Interest:</b> si el OI sube junto con la tasa, hay posiciones nuevas entrando (overreaction real) → senal mas fuerte. Si el OI baja, se estan cerrando posiciones → senal mas debil.</p>
+  <p><b>Calendario macro:</b> si estamos a 1 dia del dato de IPC INDEC, la senal se penaliza porque el mercado puede seguir volatil.</p>
+
+  <h4>Parametros</h4>
+  <p>Stop Loss: 2% | Take Profit: 4% | Ratio R/B: 1:2 | Max 20 dias en posicion</p>
+</div>
+
+<div class="strat-card">
+  <h3>2. Calendar Spread</h3>
+  <span class="tag wr">WR 80.0%</span><span class="tag pf">PF 16.09</span><span class="tag freq">~2.0/mes</span>
+
+  <h4>Que mide</h4>
+  <p>El <b>spread de tasa</b> entre dos vencimientos consecutivos (ej: JUN26 vs JUL26). Normalmente, los vencimientos mas largos pagan una tasa ligeramente mayor que los cortos (curva normal). El spread se define como:</p>
+  <p><code>Spread = Tasa_largo - Tasa_corto</code></p>
+
+  <h4>Como genera senales</h4>
+  <p>El bot calcula el z-score del spread respecto a su propia media movil de 10 dias. Hay dos tipos de senal:</p>
+  <p><b>Curva invertida (z &lt; -2):</b> el vencimiento corto paga mucho mas que el largo. Esto es anomalo y tiende a revertir → se vende el contrato corto.</p>
+  <p><b>Spread amplio (z > 2):</b> el vencimiento largo paga demasiado mas que el corto. Exceso de prima por plazo → se vende el contrato largo.</p>
+
+  <h4>Por que funciona</h4>
+  <p>Los spreads entre vencimientos son <b>mas estables</b> que los precios individuales porque dependen de la estructura de tasas, no del nivel absoluto del dolar. Cuando se distorsionan por panico o flujo puntual, vuelven a la media rapido (mean reversion).</p>
+
+  <h4>Parametros</h4>
+  <p>Stop Loss: 1.5% | Take Profit: 3% | Spread invertido: diff < -3% | Spread amplio: diff > 5%</p>
+</div>
+
+<div class="strat-card">
+  <h3>3. OI Divergencia</h3>
+  <span class="tag wr">WR 50.0%</span><span class="tag pf">PF 1.96</span><span class="tag freq">~0.8/mes</span>
+
+  <h4>Que mide</h4>
+  <p>La <b>divergencia</b> entre la direccion del precio y la del Open Interest (cantidad de contratos abiertos en el mercado).</p>
+
+  <h4>Como genera senales</h4>
+  <p>Si en los ultimos 3 dias el precio subio mas de 1% pero el OI bajo mas de 5.000 contratos, hay una divergencia bajista. Significa que el precio sube pero las posiciones se estan cerrando, no hay dinero nuevo entrando.</p>
+  <p><code>Precio 3d: +1% o mas</code></p>
+  <p><code>OI 3d: -5.000 contratos o mas</code></p>
+  <p>Filtro adicional: volumen > 10.000 contratos (liquidez minima)</p>
+
+  <h4>Por que funciona</h4>
+  <p>Es una senal clasica de <b>analisis tecnico de futuros</b>. Cuando el precio sube sin OI nuevo, los que estaban comprados estan tomando ganancia y cerrando. No hay conviccion nueva para sostener el movimiento → probable reversion a la baja.</p>
+
+  <h4>Parametros</h4>
+  <p>Stop Loss: 1.5% | Take Profit: 3% | Ventana: 3 dias</p>
+</div>
+
+<div class="strat-card">
+  <h3>4. Volume Spike</h3>
+  <span class="tag wr">WR 100%</span><span class="tag pf">PF ∞</span><span class="tag freq">~0.4/mes</span>
+
+  <h4>Que mide</h4>
+  <p>Picos anormales de volumen combinados con tasa implicita subiendo. El volumen se mide con z-score respecto a su media de 10 dias.</p>
+
+  <h4>Como genera senales</h4>
+  <p>Cuando el volumen de un contrato supera 3 desvios estandar de su media <b>Y</b> la tasa implicita tambien esta subiendo (z-score tasa > 1.0), genera senal de VENTA.</p>
+  <p><code>Vol z-score >= 3.0 AND Tasa z-score >= 1.0</code></p>
+
+  <h4>Por que funciona</h4>
+  <p>Los picos extremos de volumen son <b>exhaustion points</b> (puntos de agotamiento). Todo el que queria comprar ya compro, no queda nadie para seguir empujando el precio arriba. El volumen anomalo marca un techo temporario. Combinado con la tasa subiendo, confirma que el mercado esta en modo panico/euforia insostenible.</p>
+
+  <h4>Parametros</h4>
+  <p>Stop Loss: 2% | Take Profit: 4% | Vol z-score minimo: 3.0 | Tasa z-score minimo: 1.0</p>
+</div>
+
+<div class="strat-card">
+  <h3>Confirmaciones globales</h3>
+
+  <h4>Open Interest (OI)</h4>
+  <p>Se usa como confirmacion en todas las estrategias. Si el OI sube junto con la senal → <b>FUERTE</b> (el mercado overreacted con posiciones nuevas). Si el OI baja → senal mas debil (posiciones cerrandose).</p>
+
+  <h4>Calendario macro</h4>
+  <p>El bot tiene un calendario con las fechas de publicacion del <b>IPC INDEC</b> (inflacion mensual). Si una senal cae 1 dia antes del dato, se penaliza porque el mercado puede seguir volatil post-dato. Mejor esperar.</p>
+
+  <h4>Backtest</h4>
+  <p>Todas las estrategias fueron validadas con <b>datos reales</b> de MATBA-ROFEX (CEM API) del periodo octubre 2025 - abril 2026. Win rate global: <b>85.3%</b>. Profit factor: <b>17.06</b>. 34 trades en 5 meses.</p>
+</div>
+
+</div><!-- end tab-estrategias -->
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
 
 <script>
 // === TRADES DATA (auto-updated by bot) ===
